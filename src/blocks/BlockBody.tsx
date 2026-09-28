@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { renderMarkdown } from '../lib/markdown'
+import { resolveBase } from '../blockTypes'
 import { useShell, type Block } from '../store'
 
 /** Тело блока: содержимое определяется типом, выбранным в контекстном меню.
+ *  Пользовательские типы рисуются своим базовым рендером.
  *  Редактирование — двойным кликом по телу. */
 export function BlockBody({ block }: { block: Block }) {
-  switch (block.kind) {
+  const customs = useShell((s) => s.customTypes)
+  switch (resolveBase(block.kind, customs)) {
     case 'note':
       return <NoteBody block={block} />
     case 'text':

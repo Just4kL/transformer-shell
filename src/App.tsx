@@ -5,6 +5,7 @@ import { initPersistence } from './persistence'
 import { TopBar } from './components/TopBar'
 import { CategoryRail, Splitter } from './components/CategoryRail'
 import { Workspace } from './components/Workspace'
+import { PropertiesPanel } from './components/PropertiesPanel'
 
 export default function App() {
   const railWidth = useShell((s) => s.railWidth)
@@ -12,7 +13,10 @@ export default function App() {
   const showGrid = useShell((s) => s.showGrid)
   const toggleGrid = useShell((s) => s.toggleGrid)
   const toggleRail = useShell((s) => s.toggleRail)
+  const togglePanel = useShell((s) => s.togglePanel)
   const createBlockCentered = useShell((s) => s.createBlockCentered)
+  const undo = useShell((s) => s.undo)
+  const redo = useShell((s) => s.redo)
 
   // раскладка: читаем при старте, пишем при изменениях
   useEffect(() => initPersistence(), [])
@@ -32,13 +36,26 @@ export default function App() {
         createBlockCentered('note')
         return
       }
+      // отмена / возврат — только вне полей ввода (там работает своя)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault()
+        redo()
+        return
+      }
       if (useShell.getState().renamingId) return
       if (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') toggleGrid()
       if (e.key === '[') toggleRail()
+      if (e.key === ']') togglePanel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [createBlockCentered, toggleGrid, toggleRail])
+  }, [createBlockCentered, redo, toggleGrid, togglePanel, toggleRail, undo])
 
   return (
     <div className="shell">
@@ -48,6 +65,7 @@ export default function App() {
         <CategoryRail />
         <Workspace />
         <Splitter />
+        <PropertiesPanel />
       </div>
 
       {showGrid && (

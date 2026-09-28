@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import * as fsp from 'node:fs/promises'
 import * as path from 'node:path'
 import { layoutPath, readLayout, writeLayout } from './layoutStore'
 
@@ -98,6 +99,26 @@ ipcMain.handle('layout:save', async (_e, state: unknown) => {
 })
 
 ipcMain.handle('layout:path', () => layoutPath())
+
+// Снимок окна в PNG: диалог сохранения выбирает пользователь,
+// рендерер получает только итог. Никаких произвольных путей наружу.
+ipcMain.handle('shot:export-png', async () => {
+  try {
+    if (!win) return { ok: false, error: 'нет окна' }
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Экспорт поля в PNG',
+      defaultPath: path.join(app.getPath('pictures'), `transformer-${stamp}.png`),
+      filters: [{ name: 'PNG', extensions: ['png'] }],
+    })
+    if (canceled || !filePath) return { ok: true, cancelled: true }
+    const image = await win.capturePage()
+    await fsp.writeFile(filePath, image.toPNG())
+    return { ok: true, path: filePath }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+})
 
 app.whenReady().then(() => {
   createWindow()

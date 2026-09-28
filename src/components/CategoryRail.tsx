@@ -17,6 +17,7 @@ export function CategoryRail() {
   const collapsed = useShell((s) => s.railCollapsed)
   const toggleRail = useShell((s) => s.toggleRail)
   const addCategory = useShell((s) => s.addCategory)
+  const removeCategory = useShell((s) => s.removeCategory)
 
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
@@ -56,6 +57,21 @@ export function CategoryRail() {
                 <span className="rail-glyph">{c.glyph}</span>
                 <span className="rail-label">{c.label}</span>
                 <span className="rail-n">{n}</span>
+                {categories.length > 1 && (
+                  <span
+                    className="rail-del"
+                    role="button"
+                    tabIndex={-1}
+                    title={`Удалить «${c.label}» — блоки перейдут в первую категорию. Можно отменить (Ctrl+Z).`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeCategory(c.id)
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    ✕
+                  </span>
+                )}
               </button>
             </li>
           )

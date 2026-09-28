@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getBridge } from './bridge'
 import { sanitize } from './layout'
 import { useShell } from './store'
 
@@ -19,17 +20,6 @@ import { useShell } from './store'
 const DEBOUNCE_MS = 500
 const MAX_WAIT_MS = 2500
 
-interface Bridge {
-  saveLayout: (state: unknown) => Promise<{ ok: true; path: string } | { ok: false; error: string }>
-  loadLayout: () => Promise<{ ok: true; data: unknown | null } | { ok: false; error: string }>
-  layoutPath: () => Promise<string>
-}
-
-const bridge = (): Bridge | null => {
-  const w = window as unknown as { transformer?: Bridge }
-  return w.transformer ?? null
-}
-
 export type PersistPhase = 'loading' | 'ready' | 'error' | 'off'
 
 interface PersistStatus {
@@ -47,7 +37,7 @@ export const usePersistStatus = create<PersistStatus>(() => ({
 }))
 
 export function initPersistence(): () => void {
-  const api = bridge()
+  const api = getBridge()
   if (!api) {
     // запуск в браузере: сохранять некуда, но и падать незачем
     usePersistStatus.setState({ phase: 'off' })

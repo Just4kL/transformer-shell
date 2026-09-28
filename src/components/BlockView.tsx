@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { BLOCK_HEAD, MAJOR } from '../grid'
-import { getBlockDef } from '../blockTypes'
+import { resolveDef } from '../blockTypes'
 import { useBlockPointer, RESIZE_DIRS, type ResizeDir } from '../hooks/useBlockPointer'
 import { useInteraction } from '../interaction'
 import { useShell, blockBox, type Block } from '../store'
@@ -40,7 +40,8 @@ export function BlockView({
 
   const onDown = useBlockPointer(block)
   const box = blockBox(block, canvas)
-  const def = getBlockDef(block.kind)
+  const customs = useShell((s) => s.customTypes)
+  const def = resolveDef(block.kind, customs)
   const isRenaming = renamingId === block.id
   const active = moving === block.id || resizing === block.id
 

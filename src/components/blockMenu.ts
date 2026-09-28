@@ -1,39 +1,53 @@
-import { BLOCK_DEFS, type BlockKind } from '../blockTypes'
+import { BLOCK_DEFS, type CustomTypeDef } from '../blockTypes'
 import type { Block } from '../store'
 import { sep, type MenuItem } from './menu'
 
 /**
  * Меню блока: назвать, сменить содержимое, перенести, свернуть/развернуть,
- * удалить. Вынесено отдельным модулем, чтобы в файле компонента остались
+ * удалить. Пользовательские типы идут общим списком со встроенными —
+ * для блока нет разницы, кем тип создан.
+ * Вынесено отдельным модулем, чтобы в файле компонента остались
  * только компоненты — иначе ломается Fast Refresh.
  */
 export function blockMenuItems(
   block: Block,
   actions: {
     rename: () => void
-    setKind: (k: BlockKind) => void
+    setKind: (k: string) => void
     moveTo: (c: string) => void
     collapse: () => void
     full: () => void
     remove: () => void
   },
   categories: readonly { id: string; label: string; glyph: string }[],
+  customs: readonly CustomTypeDef[],
 ): MenuItem[] {
+  const kindChildren: MenuItem[] = BLOCK_DEFS.map((d) => ({
+    id: `kind-${d.kind}`,
+    label: d.label,
+    hint: d.hint,
+    glyph: d.glyph,
+    checked: block.kind === d.kind,
+    onSelect: () => actions.setKind(d.kind),
+  }))
+
+  if (customs.length > 0) {
+    kindChildren.push({ id: 'kind-sep', label: '', separator: true })
+    for (const t of customs) {
+      kindChildren.push({
+        id: `kind-${t.id}`,
+        label: t.label,
+        hint: t.hint || 'свой тип',
+        glyph: t.glyph,
+        checked: block.kind === t.id,
+        onSelect: () => actions.setKind(t.id),
+      })
+    }
+  }
+
   return [
     { id: 'rename', label: 'Назвать блок…', glyph: '✎', onSelect: actions.rename },
-    {
-      id: 'kind',
-      label: 'Будет показывать',
-      glyph: '▤',
-      children: BLOCK_DEFS.map((d) => ({
-        id: `kind-${d.kind}`,
-        label: d.label,
-        hint: d.hint,
-        glyph: d.glyph,
-        checked: d.kind === block.kind,
-        onSelect: () => actions.setKind(d.kind),
-      })),
-    },
+    { id: 'kind', label: 'Будет показывать', glyph: '▤', children: kindChildren },
     {
       id: 'move',
       label: 'Перенести в категорию',

@@ -7,10 +7,17 @@ import { contextBridge, ipcRenderer } from 'electron'
  * Каждый метод — одна конкретная операция. Смысл в том, чтобы
  * поверхность, доступная коду интерфейса, нельзя было расширить
  * по мере роста приложения.
+ *
+ * Форма моста продублирована в `src/bridge.ts` — единый тип для
+ * всех компонентов. Расширяя мост здесь, обнови и его.
  */
 
 type SaveResult = { ok: true; path: string } | { ok: false; error: string }
 type LoadResult = { ok: true; data: unknown | null } | { ok: false; error: string }
+type ExportResult =
+  | { ok: true; path: string; cancelled?: false }
+  | { ok: true; cancelled: true; path?: undefined }
+  | { ok: false; error: string }
 
 const api = {
   platform: process.platform,
@@ -29,6 +36,9 @@ const api = {
   saveLayout: (state: unknown): Promise<SaveResult> => ipcRenderer.invoke('layout:save', state),
   loadLayout: (): Promise<LoadResult> => ipcRenderer.invoke('layout:load'),
   layoutPath: (): Promise<string> => ipcRenderer.invoke('layout:path'),
+
+  // снимок окна в PNG через диалог сохранения
+  exportPng: (): Promise<ExportResult> => ipcRenderer.invoke('shot:export-png'),
 }
 
 contextBridge.exposeInMainWorld('transformer', api)

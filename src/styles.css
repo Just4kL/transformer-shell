@@ -1306,3 +1306,311 @@ textarea {
     padding: 6px;
   }
 }
+
+/* ==========================================================================
+   Панель свойств — правая колонка конструктора
+   --------------------------------------------------------------------------
+   Ширина 256px = 4 больших квадрата. Зеркалит рельс: та же механика
+   сворачивания, те же тона. В сетку не вмешивается: колонка в потоке flex,
+   холст измеряется сам.
+   ========================================================================== */
+
+.panel {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line);
+  overflow: hidden;
+  transition: width 0.14s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel.is-collapsed {
+  border-left-color: transparent;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  flex: 0 0 auto;
+}
+
+.panel-title {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+  white-space: nowrap;
+}
+
+.panel-collapse {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  color: var(--fg-3);
+  transition: color 0.1s, background 0.1s;
+}
+
+.panel-collapse:hover {
+  color: var(--accent);
+  background: var(--bg-3);
+}
+
+.panel-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 236px;
+}
+
+.panel-empty {
+  color: var(--fg-4);
+  font-size: 12px;
+  line-height: 1.7;
+  padding-top: 12px;
+}
+
+.panel-stat {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+}
+
+.panel-hint {
+  font-size: 11px;
+  color: var(--fg-4);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.prop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.prop-section:last-child {
+  border-bottom: 0;
+}
+
+.prop-section-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  margin: 0;
+}
+
+.prop-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.prop-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--fg-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prop-input,
+.prop-select,
+.prop-textarea {
+  flex: 0 1 auto;
+  min-width: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-size: 12px;
+  padding: 3px 7px;
+  outline: none;
+  transition: border-color 0.1s;
+}
+
+.prop-input {
+  width: 130px;
+}
+
+.prop-select {
+  max-width: 150px;
+}
+
+.prop-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.prop-input:focus,
+.prop-select:focus,
+.prop-textarea:focus {
+  border-color: var(--accent);
+}
+
+.prop-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+
+.prop-stepper button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.prop-stepper button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.prop-stepper button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.prop-num {
+  min-width: 26px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-2);
+}
+
+.prop-buttons {
+  gap: 6px;
+}
+
+.prop-btn {
+  flex: 1 1 auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 11px;
+  white-space: nowrap;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.prop-btn:hover {
+  color: var(--fg);
+  border-color: var(--line-3);
+}
+
+.prop-btn.is-danger {
+  color: var(--fg-3);
+}
+
+.prop-btn.is-danger:hover {
+  color: #ff8b8b;
+  border-color: rgba(208, 52, 44, 0.5);
+  background: rgba(208, 52, 44, 0.12);
+}
+
+/* крестик удаления категории — только при наведении */
+.rail-item {
+  position: relative;
+}
+
+.rail-del {
+  display: none;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 2px;
+  color: var(--fg-4);
+  font-size: 9px;
+  flex: 0 0 auto;
+}
+
+.rail-item:hover .rail-del {
+  display: grid;
+}
+
+.rail-del:hover {
+  color: #ff8b8b;
+  background: rgba(208, 52, 44, 0.2);
+}
+
+/* группа кнопок отмены в панели окна */
+.tb-group {
+  display: flex;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.tb-btn.tb-icon {
+  width: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.tb-btn.tb-icon + .tb-btn.tb-icon {
+  border-left: 1px solid var(--line-2);
+}
+
+.tb-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.tb-btn:disabled:hover {
+  color: var(--fg-3);
+  border-color: var(--line-2);
+  background: var(--bg-2);
+}
+
+.tb-panel-icon {
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-right-width: 4px;
+  opacity: 0.85;
+}

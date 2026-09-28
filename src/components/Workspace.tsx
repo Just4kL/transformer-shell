@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MAJOR, PAD, UNIT, gridOffset } from '../grid'
-import { BLOCK_DEFS, defaultSize, type BlockKind } from '../blockTypes'
+import { BLOCK_DEFS, BUILTINS, defaultSize, resolveDef } from '../blockTypes'
+import { getBridge } from '../bridge'
 import { useInteraction } from '../interaction'
 import { useShell, blockBox, type Block } from '../store'
 import { BlockView } from './BlockView'
@@ -13,22 +14,26 @@ export function Workspace() {
   const categories = useShell((s) => s.categories)
   const active = useShell((s) => s.activeCategory)
   const blocks = useShell((s) => s.blocks)
+  const customs = useShell((s) => s.customTypes)
   const canvas = useShell((s) => s.canvas)
   const setCanvas = useShell((s) => s.setCanvas)
   const showGrid = useShell((s) => s.showGrid)
   const toggleGrid = useShell((s) => s.toggleGrid)
   const createBlock = useShell((s) => s.createBlock)
   const removeBlock = useShell((s) => s.removeBlock)
+  const spawnCustomBlock = useShell((s) => s.spawnCustomBlock)
   const changeKind = useShell((s) => s.changeKind)
   const moveToCategory = useShell((s) => s.moveToCategory)
   const toggleCollapse = useShell((s) => s.toggleCollapse)
   const toggleFull = useShell((s) => s.toggleFull)
   const beginRename = useShell((s) => s.beginRename)
+  const selected = useShell((s) => s.selectedId)
+  const select = useShell((s) => s.select)
+  const clearCategory = useShell((s) => s.clearCategory)
 
   const viewRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<MenuRequest | null>(null)
-  const [selected, setSelected] = useState<string | null>(null)
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
 
   const visible = useMemo(() => blocks.filter((b) => b.category === active), [blocks, active])
@@ -84,21 +89,50 @@ export function Workspace() {
 
   function createMenuItems(p: { x: number; y: number }): MenuItem[] {
     // p — точка правого клика; блок встаёт под курсором, на сетке
-    const at = (kind: BlockKind) => () =>
-      createBlock(kind, p.x - defaultSize(kind).w / 2, p.y - UNIT * 2)
+    const at = (kind: string) => () =>
+      createBlock(kind, p.x - defaultSize(kind, customs).w / 2, p.y - UNIT * 2)
+
+    const newChildren: MenuItem[] = BLOCK_DEFS.map((d) => ({
+      id: `new-${d.kind}`,
+      label: d.label,
+      hint: d.hint,
+      glyph: d.glyph,
+      onSelect: at(d.kind),
+    }))
+    for (const t of customs) {
+      const resolved = resolveDef(t.id, customs)
+      newChildren.push({
+        id: `new-${t.id}`,
+        label: t.label,
+        hint: t.hint || 'свой тип',
+        glyph: t.glyph,
+        onSelect: () => createBlock(t.id, p.x - resolved.w * MAJOR / 2, p.y - UNIT * 2),
+      })
+    }
+
+    const canExport = getBridge()?.exportPng !== undefined
 
     return [
       {
         id: 'new',
         label: 'Создать блок',
         glyph: '+',
-        children: BLOCK_DEFS.map((d) => ({
-          id: `new-${d.kind}`,
-          label: d.label,
-          hint: d.hint,
-          glyph: d.glyph,
-          onSelect: at(d.kind as BlockKind),
-        })),
+        children: newChildren,
+      },
+      {
+        id: 'new-type',
+        label: 'Новый тип блока…',
+        glyph: '＋',
+        children: BUILTINS.map((base) => {
+          const d = resolveDef(base, customs)
+          return {
+            id: `new-type-${base}`,
+            label: d.label,
+            hint: 'свой тип на этой основе',
+            glyph: d.glyph,
+            onSelect: () => spawnCustomBlock(base, p.x, p.y),
+          }
+        }),
       },
       {
         id: 'new-at-pad',
@@ -114,6 +148,16 @@ export function Workspace() {
         checked: showGrid,
         onSelect: toggleGrid,
       },
+      ...(canExport
+        ? [
+            {
+              id: 'export',
+              label: 'Экспорт поля в PNG…',
+              glyph: '⤓',
+              onSelect: () => void getBridge()?.exportPng(),
+            } as MenuItem,
+          ]
+        : []),
       sep('sep2'),
       {
         id: 'clear',
@@ -121,7 +165,7 @@ export function Workspace() {
         glyph: '⌫',
         danger: true,
         disabled: visible.length === 0,
-        onSelect: () => visible.forEach((b) => removeBlock(b.id)),
+        onSelect: () => clearCategory(),
       },
     ]
   }
@@ -141,6 +185,7 @@ export function Workspace() {
           remove: () => removeBlock(block.id),
         },
         categories,
+        customs,
       ),
     })
   }
@@ -153,14 +198,14 @@ export function Workspace() {
         onScroll={onScroll}
         onContextMenu={(e) => {
           e.preventDefault()
-          setSelected(null)
+          select(null)
           openCreateMenu(e.clientX, e.clientY)
         }}
         onPointerMove={(e) => {
           if (e.buttons === 2 && menu) setHoverPoint(localPoint(e.clientX, e.clientY))
         }}
         onPointerDown={(e) => {
-          if (e.target === e.currentTarget) setSelected(null)
+          if (e.target === e.currentTarget) select(null)
         }}
       >
         <div className="ws-canvas" ref={canvasRef} style={{ height: contentH }}>
@@ -187,7 +232,7 @@ export function Workspace() {
               key={b.id}
               block={b}
               selected={selected === b.id}
-              onSelect={setSelected}
+              onSelect={select}
               onMenu={openBlockMenu}
             />
           ))}

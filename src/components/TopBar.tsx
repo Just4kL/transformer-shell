@@ -1,16 +1,10 @@
 import { useEffect, useState } from 'react'
 import { MAJOR, UNIT, fmt } from '../grid'
 import { usePersistStatus } from '../persistence'
-import { useShell } from '../store'
+import { useHistoryStatus, useShell } from '../store'
+import { getBridge } from '../bridge'
 
-interface WinApi {
-  minimize: () => void
-  toggleMaximize: () => void
-  close: () => void
-  onMaximized: (cb: (v: boolean) => void) => () => void
-}
-
-const api: WinApi | undefined = (window as unknown as { transformer?: WinApi }).transformer
+const api = getBridge()
 
 export function TopBar() {
   const categories = useShell((s) => s.categories)
@@ -18,6 +12,12 @@ export function TopBar() {
   const blocks = useShell((s) => s.blocks)
   const showGrid = useShell((s) => s.showGrid)
   const toggleGrid = useShell((s) => s.toggleGrid)
+  const panelOpen = useShell((s) => s.panelOpen)
+  const togglePanel = useShell((s) => s.togglePanel)
+  const undo = useShell((s) => s.undo)
+  const redo = useShell((s) => s.redo)
+  const canUndo = useHistoryStatus((s) => s.canUndo)
+  const canRedo = useHistoryStatus((s) => s.canRedo)
   const canvas = useShell((s) => s.canvas)
 
   const [maximized, setMaximized] = useState(false)
@@ -41,6 +41,27 @@ export function TopBar() {
 
       <div className="tb-tools" data-no-drag>
         <SaveIndicator />
+        <span className="tb-group" role="group" aria-label="Отмена и возврат">
+          <button className="tb-btn tb-icon" onClick={undo} disabled={!canUndo} title="Отменить (Ctrl+Z)">
+            ↩
+          </button>
+          <button
+            className="tb-btn tb-icon"
+            onClick={redo}
+            disabled={!canRedo}
+            title="Вернуть (Ctrl+Shift+Z)"
+          >
+            ↪
+          </button>
+        </span>
+        <button
+          className={panelOpen ? 'tb-btn is-on' : 'tb-btn'}
+          onClick={togglePanel}
+          title="Панель свойств ( ] )"
+        >
+          <span className="tb-panel-icon" aria-hidden />
+          Панель
+        </button>
         <button
           className={showGrid ? 'tb-btn is-on' : 'tb-btn'}
           onClick={toggleGrid}

@@ -223,6 +223,10 @@ export function useBlockPointer(block: Block) {
       }
       e.preventDefault()
 
+      // точка отмены на всё перетаскивание целиком — ставится один раз,
+      // а не на каждый кадр; Esc тоже откатывает к ней через setRect
+      useShell.getState().checkpoint()
+
       const others = blocks.filter((b) => b.id !== block.id && b.category === block.category)
       candRef.current = collectCandidates(others, canvas)
       startRef.current = { mode, dir, px: e.clientX, py: e.clientY, rect: { ...block.rect } }

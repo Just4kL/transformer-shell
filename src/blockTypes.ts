@@ -1,9 +1,29 @@
 import { MAJOR } from './grid'
 
-export type BlockKind = 'note' | 'text' | 'log' | 'actions' | 'blank'
+/**
+ * Реестр типов блоков. Фаза А: реестр открыт для пользователя.
+ *
+ * Встроенные типы (`BuiltinKind`) — единственные, у которых есть свой
+ * рендер в `BlockBody`. Пользовательский тип НЕ добавляет рендер:
+ * он переиспользует один из встроенных через поле `base`, а сам задаёт
+ * оформление: название, значок, подсказку, габарит и начальное содержимое.
+ *
+ * Пример: «Кнопки сборки» — это `base: 'actions'` с собственным именем
+ * и значком. Так «лего» собирается без единой строчки кода.
+ */
+
+export type BuiltinKind = 'note' | 'text' | 'log' | 'actions' | 'blank'
+
+/** Вид блока: встроенное имя либо id пользовательского типа (`u_12`). */
+export type BlockKind = string
+
+export const BUILTINS: readonly BuiltinKind[] = ['note', 'text', 'log', 'actions', 'blank']
+
+export const isBuiltin = (kind: string): kind is BuiltinKind =>
+  (BUILTINS as readonly string[]).includes(kind)
 
 export interface BlockDef {
-  kind: BlockKind
+  kind: BuiltinKind
   /** Название типа в меню — «что он будет показывать». */
   label: string
   hint: string
@@ -12,6 +32,36 @@ export interface BlockDef {
   w: number
   h: number
   blank: string
+}
+
+/** Пользовательский тип блока — оформление поверх встроенного рендера. */
+export interface CustomTypeDef {
+  /** Идентификатор вида `u_12`. */
+  id: string
+  label: string
+  glyph: string
+  hint: string
+  /** Какой встроенный рендер использовать для отображения. */
+  base: BuiltinKind
+  /** Габарит новых блоков в больших квадратах. */
+  w: number
+  h: number
+  /** Начальное содержимое новых блоков. */
+  blank: string
+}
+
+/** Тип блока, приведённый к полному виду — чем рисовать и как назвать. */
+export interface ResolvedDef {
+  label: string
+  glyph: string
+  hint: string
+  w: number
+  h: number
+  blank: string
+  /** Итоговый рендер. */
+  base: BuiltinKind
+  /** true — пользовательский тип, false — встроенный. */
+  custom: boolean
 }
 
 export const BLOCK_DEFS: readonly BlockDef[] = [
@@ -62,12 +112,44 @@ export const BLOCK_DEFS: readonly BlockDef[] = [
   },
 ] as const
 
-const BY_KIND = new Map<BlockKind, BlockDef>(BLOCK_DEFS.map((d) => [d.kind, d]))
+const BY_KIND = new Map<string, BlockDef>(BLOCK_DEFS.map((d) => [d.kind, d]))
 
-export const getBlockDef = (kind: BlockKind): BlockDef =>
-  BY_KIND.get(kind) ?? BLOCK_DEFS[0]
+/**
+ * Приводит вид блока к полному виду. Неизвестный вид (например, тип,
+ * удалённый после сохранения) безопасно превращается в заглушку —
+ * блок не пропадает, содержимое не теряется.
+ */
+export function resolveDef(kind: string, customs: readonly CustomTypeDef[]): ResolvedDef {
+  const builtin = BY_KIND.get(kind)
+  if (builtin) {
+    return { ...builtin, base: builtin.kind, custom: false }
+  }
+  const custom = customs.find((c) => c.id === kind)
+  if (custom && BY_KIND.has(custom.base)) {
+    return {
+      label: custom.label,
+      glyph: custom.glyph,
+      hint: custom.hint,
+      w: custom.w,
+      h: custom.h,
+      blank: custom.blank,
+      base: custom.base,
+      custom: true,
+    }
+  }
+  const blank = BY_KIND.get('blank') as BlockDef
+  return { ...blank, base: 'blank' as BuiltinKind, custom: false }
+}
 
-export const defaultSize = (kind: BlockKind): { w: number; h: number } => {
-  const d = getBlockDef(kind)
+/** Только рендер — для выбора тела блока. */
+export const resolveBase = (kind: string, customs: readonly CustomTypeDef[]): BuiltinKind =>
+  resolveDef(kind, customs).base
+
+export const defaultSize = (kind: string, customs: readonly CustomTypeDef[] = []): { w: number; h: number } => {
+  const d = resolveDef(kind, customs)
   return { w: d.w * MAJOR, h: d.h * MAJOR }
 }
+
+/** Совместимость: определение встроенного типа по имени. */
+export const getBlockDef = (kind: BuiltinKind): BlockDef =>
+  BY_KIND.get(kind) ?? (BY_KIND.get('blank') as BlockDef)
