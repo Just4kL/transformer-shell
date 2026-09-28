@@ -11,8 +11,31 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "build:renderer": "tsc -p tsconfig.json --noEmit && vite build",
     "build": "npm run build:renderer && npm run build:electron",
+    "dist:win": "cross-env ELECTRON_BUILDER_CACHE=./temp/eb-cache electron-builder --win dir --publish never",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.transformer.shell",
+    "productName": "Transformer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -27,6 +50,7 @@
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
     "electron": "^44.4.5",
+    "electron-builder": "^26.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "wait-on": "^9.1.0"
