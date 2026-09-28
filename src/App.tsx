@@ -31,27 +31,33 @@ export default function App() {
       // в полях ввода и во время переименования блока — не перехватываем
       if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.closest('.b-rename')) return
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+      // e.key зависит от раскладки: на русской Ctrl+Z даёт key='я'.
+      // e.code — физическая клавиша, от раскладки не зависит.
+      // Проверяем оба, чтобы работало везде.
+      const mod = e.ctrlKey || e.metaKey
+      const k = e.key.toLowerCase()
+
+      if (mod && (e.code === 'KeyN' || k === 'n')) {
         e.preventDefault()
         createBlockCentered('note')
         return
       }
       // отмена / возврат — только вне полей ввода (там работает своя)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if (mod && (e.code === 'KeyZ' || k === 'z' || k === 'я')) {
         e.preventDefault()
         if (e.shiftKey) redo()
         else undo()
         return
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      if (mod && (e.code === 'KeyY' || k === 'y' || k === 'н')) {
         e.preventDefault()
         redo()
         return
       }
       if (useShell.getState().renamingId) return
-      if (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') toggleGrid()
-      if (e.key === '[') toggleRail()
-      if (e.key === ']') togglePanel()
+      if (e.code === 'KeyG' || k === 'g' || k === 'п') toggleGrid()
+      if (e.code === 'BracketLeft' || e.key === '[' || k === 'х') toggleRail()
+      if (e.code === 'BracketRight' || e.key === ']' || k === 'ъ') togglePanel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
