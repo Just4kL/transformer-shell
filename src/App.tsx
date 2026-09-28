@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BAR_H, MAJOR } from './grid'
 import { useShell } from './store'
+import { initPersistence } from './persistence'
 import { TopBar } from './components/TopBar'
 import { CategoryRail, Splitter } from './components/CategoryRail'
 import { Workspace } from './components/Workspace'
@@ -11,6 +12,10 @@ export default function App() {
   const showGrid = useShell((s) => s.showGrid)
   const toggleGrid = useShell((s) => s.toggleGrid)
   const toggleRail = useShell((s) => s.toggleRail)
+  const createBlockCentered = useShell((s) => s.createBlockCentered)
+
+  // раскладка: читаем при старте, пишем при изменениях
+  useEffect(() => initPersistence(), [])
 
   // горячие клавиши оболочки
   useEffect(() => {
@@ -21,13 +26,19 @@ export default function App() {
       const tag = el?.tagName
       // в полях ввода и во время переименования блока — не перехватываем
       if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.closest('.b-rename')) return
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        createBlockCentered('note')
+        return
+      }
       if (useShell.getState().renamingId) return
       if (e.key === 'g' || e.key === 'G' || e.key === 'п' || e.key === 'П') toggleGrid()
       if (e.key === '[') toggleRail()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleGrid, toggleRail])
+  }, [createBlockCentered, toggleGrid, toggleRail])
 
   return (
     <div className="shell">

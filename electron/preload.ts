@@ -1,7 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+/**
+ * Узкий мост между рендерером и главным процессом.
+ *
+ * Здесь нет ничего «общего назначения»: ни fetch, ни fs, ни spawn.
+ * Каждый метод — одна конкретная операция. Смысл в том, чтобы
+ * поверхность, доступная коду интерфейса, нельзя было расширить
+ * по мере роста приложения.
+ */
+
+type SaveResult = { ok: true; path: string } | { ok: false; error: string }
+type LoadResult = { ok: true; data: unknown | null } | { ok: false; error: string }
+
 const api = {
   platform: process.platform,
+
+  // окно
   minimize: () => ipcRenderer.send('win:minimize'),
   toggleMaximize: () => ipcRenderer.send('win:toggle-maximize'),
   close: () => ipcRenderer.send('win:close'),
@@ -10,6 +24,11 @@ const api = {
     ipcRenderer.on('win:maximized', listener)
     return () => ipcRenderer.removeListener('win:maximized', listener)
   },
+
+  // раскладка
+  saveLayout: (state: unknown): Promise<SaveResult> => ipcRenderer.invoke('layout:save', state),
+  loadLayout: (): Promise<LoadResult> => ipcRenderer.invoke('layout:load'),
+  layoutPath: (): Promise<string> => ipcRenderer.invoke('layout:path'),
 }
 
 contextBridge.exposeInMainWorld('transformer', api)

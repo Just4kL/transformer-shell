@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MAJOR, UNIT, fmt } from '../grid'
+import { usePersistStatus } from '../persistence'
 import { useShell } from '../store'
 
 interface WinApi {
@@ -39,6 +40,7 @@ export function TopBar() {
       </div>
 
       <div className="tb-tools" data-no-drag>
+        <SaveIndicator />
         <button
           className={showGrid ? 'tb-btn is-on' : 'tb-btn'}
           onClick={toggleGrid}
@@ -83,5 +85,36 @@ export function TopBar() {
         </button>
       </div>
     </header>
+  )
+}
+
+/** Состояние автосохранения раскладки. */
+function SaveIndicator() {
+  const phase = usePersistStatus((s) => s.phase)
+  const lastSaved = usePersistStatus((s) => s.lastSaved)
+  const error = usePersistStatus((s) => s.error)
+  const path = usePersistStatus((s) => s.path)
+
+  if (phase === 'off') return null
+
+  const label =
+    phase === 'loading'
+      ? 'загрузка…'
+      : phase === 'error'
+        ? 'не сохранено'
+        : lastSaved !== null
+          ? `сохранено ${new Date(lastSaved).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+          : 'из файла'
+
+  const title =
+    phase === 'error'
+      ? (error ?? 'неизвестная ошибка')
+      : (path ?? 'файл раскладки')
+
+  return (
+    <span className={`tb-save is-${phase}`} title={title}>
+      <i aria-hidden />
+      {label}
+    </span>
   )
 }

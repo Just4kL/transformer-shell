@@ -12,43 +12,19 @@ import {
   snapDown,
 } from './grid'
 import { defaultSize, getBlockDef, type BlockKind } from './blockTypes'
+import {
+  DEFAULT_CATEGORIES,
+  type Block,
+  type Category,
+  type ExpandMode,
+  type PersistedState,
+  type Rect,
+} from './layout'
 
-export interface Rect {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
-/** Механизм развёртки: обычный размер / на всё рабочее поле. */
-export type ExpandMode = 'normal' | 'full'
-
-export interface Block {
-  id: string
-  kind: BlockKind
-  title: string
-  category: string
-  rect: Rect
-  /** Габарит до «развёртки» на всё поле — чтобы вернуть точно туда же. */
-  savedRect: Rect | null
-  collapsed: boolean
-  expanded: ExpandMode
-  content: string
-}
-
-export interface Category {
-  id: string
-  label: string
-  glyph: string
-}
-
-export const DEFAULT_CATEGORIES: readonly Category[] = [
-  { id: 'in', label: 'Ввод', glyph: '◆' },
-  { id: 'core', label: 'Ядро', glyph: '⬢' },
-  { id: 'log', label: 'Журнал', glyph: '≡' },
-  { id: 'out', label: 'Вывод', glyph: '▷' },
-  { id: 'sys', label: 'Система', glyph: '⚙' },
-]
+// Схема данных живёт в layout.ts; переэкспортируем, чтобы существующие
+// импорты из store продолжали работать.
+export { DEFAULT_CATEGORIES }
+export type { Block, Category, ExpandMode, PersistedState, Rect }
 
 interface ShellState {
   railWidth: number
@@ -67,7 +43,9 @@ interface ShellState {
   addCategory: (label: string) => void
   renameCategory: (id: string, label: string) => void
 
-  createBlock: (kind: BlockKind, px: number, py: number) => string
+  createBlock: (kind: BlockKind, x: number, y: number) => string
+  /** Новый блок по центру видимой области — для горячей клавиши. */
+  createBlockCentered: (kind: BlockKind) => string
   removeBlock: (id: string) => void
   renameBlock: (id: string, title: string) => void
   changeKind: (id: string, kind: BlockKind) => void
@@ -81,6 +59,8 @@ interface ShellState {
   setCanvas: (size: { w: number; h: number }) => void
   toggleGrid: () => void
   clearWorkspace: () => void
+  hydrate: (p: PersistedState) => void
+  toPersisted: () => PersistedState
 }
 
 const normRect = (r: Rect): Rect => ({
@@ -116,19 +96,18 @@ export const useShell = create<ShellState>((set, get) => ({
       categories: s.categories.map((c) => (c.id === id ? { ...c, label } : c)),
     })),
 
-  createBlock: (kind, px, py) => {
+  createBlock: (kind, x, y) => {
     const s = get()
     const def = getBlockDef(kind)
     const size = defaultSize(kind)
     const id = `b${s.seq}`
 
-    // Точка из контекстного меню — в координатах рабочей области.
-    // Блок встаёт на сетку и целиком в пределы полей.
+    // (x, y) — левый верхний угол блока; приводим к сетке и в поля
     const maxX = Math.max(PAD, s.canvas.w - PAD - size.w)
     const maxY = Math.max(PAD, s.canvas.h - PAD - size.h)
     const rect = normRect({
-      x: clamp(snap(px - size.w / 2, UNIT), PAD, maxX),
-      y: clamp(snap(py - UNIT * 2, UNIT), PAD, maxY),
+      x: clamp(snap(x, UNIT), PAD, maxX),
+      y: clamp(snap(y, UNIT), PAD, maxY),
       w: size.w,
       h: size.h,
     })
@@ -153,12 +132,24 @@ export const useShell = create<ShellState>((set, get) => ({
     return id
   },
 
+  createBlockCentered: (kind) => {
+    const s = get()
+    const size = defaultSize(kind)
+    // по центру видимой области, с небольшим сдвигом, чтобы новый блок
+    // не ложился ровно на предыдущий
+    const shift = (s.blocks.length % 5) * MAJOR
+    return get().createBlock(
+      kind,
+      (s.canvas.w - size.w) / 2 + shift,
+      (s.canvas.h - size.h) / 2 + shift,
+    )
+  },
+
   removeBlock: (id) =>
     set((s) => ({
       blocks: s.blocks.filter((b) => b.id !== id),
       renamingId: s.renamingId === id ? null : s.renamingId,
     })),
-
   renameBlock: (id, title) =>
     set((s) => ({
       blocks: s.blocks.map((b) =>
@@ -237,6 +228,35 @@ export const useShell = create<ShellState>((set, get) => ({
 
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   clearWorkspace: () => set({ blocks: [], renamingId: null }),
+
+  /** Загрузка раскладки с диска. Данные уже прошли sanitize(). */
+  hydrate: (p: PersistedState) =>
+    set((s) => ({
+      railWidth: p.railWidth,
+      railCollapsed: p.railCollapsed,
+      showGrid: p.showGrid,
+      activeCategory: p.activeCategory,
+      categories: p.categories,
+      blocks: p.blocks,
+      seq: p.seq,
+      // правка названия при загрузке не должна начинаться сама
+      renamingId: null,
+      canvas: s.canvas,
+    })),
+
+  /** Срез состояния для записи на диск. */
+  toPersisted: (): PersistedState => {
+    const s = get()
+    return {
+      railWidth: s.railWidth,
+      railCollapsed: s.railCollapsed,
+      showGrid: s.showGrid,
+      activeCategory: s.activeCategory,
+      categories: s.categories,
+      seq: s.seq,
+      blocks: s.blocks,
+    }
+  },
 }))
 
 /** Высота блока с учётом свёрнутого состояния. */

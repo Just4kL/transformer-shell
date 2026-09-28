@@ -1,7 +1,11 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
 import * as path from 'node:path'
+import { layoutPath, readLayout, writeLayout } from './layoutStore'
 
-const DEV = process.env.TRANSFORMER_DEV === '1' || !app.isPackaged
+// Режим разработки включается только явно: `npm run dev` ставит
+// TRANSFORMER_DEV=1. Иначе (в том числе при `npx electron .` после сборки)
+// открывается собранный dist/, а не висящий наготове Vite.
+const DEV = process.env.TRANSFORMER_DEV === '1'
 const DEV_URL = 'http://localhost:5273'
 const RENDERER_DIR = path.join(__dirname, '..', 'dist')
 
@@ -28,6 +32,23 @@ function createWindow() {
   })
 
   nativeTheme.themeSource = 'dark'
+
+  // Логи рендерера в stdout: без этого ошибки на стороне интерфейса
+  // не видны в терминале вообще.
+  win.webContents.on('console-message', (event) => {
+    const level = (event as { level?: unknown }).level
+    const message = (event as { message?: unknown }).message
+    const line = (event as { lineNumber?: unknown }).lineNumber
+    if (typeof message !== 'string') return
+    const tag = level === 3 ? 'ошибка' : level === 2 ? 'warn' : 'log'
+    if (level !== 0 || message.startsWith('[layout]')) {
+      console.log(`[renderer:${tag}] ${message}${line ? ` (стр. ${line})` : ''}`)
+    }
+  })
+
+  win.webContents.on('preload-error', (_e, file, err) => {
+    console.error('[preload] не загрузился:', file, err.message)
+  })
 
   win.once('ready-to-show', () => win?.show())
 
@@ -56,8 +77,31 @@ ipcMain.on('win:toggle-maximize', () => {
 })
 ipcMain.on('win:close', () => win?.close())
 
+// ── раскладка ──────────────────────────────────────────────────────────────
+// Поверхность намеренно узкая: рендерер умеет только «сохранить» и «прочитать».
+// Ни произвольных путей, ни файловых операций на волю рендереру не выдаётся.
+ipcMain.handle('layout:load', () => {
+  try {
+    return { ok: true, data: readLayout() }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+})
+
+ipcMain.handle('layout:save', async (_e, state: unknown) => {
+  try {
+    return await writeLayout(state)
+  } catch (err) {
+    console.error('[layout] сохранение не удалось:', (err as Error).message)
+    return { ok: false, error: (err as Error).message }
+  }
+})
+
+ipcMain.handle('layout:path', () => layoutPath())
+
 app.whenReady().then(() => {
   createWindow()
+  console.log('[layout] файл раскладки:', layoutPath())
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

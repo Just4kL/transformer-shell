@@ -253,6 +253,42 @@ textarea {
   color: var(--fg-4);
 }
 
+/* индикатор автосохранения раскладки */
+.tb-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-4);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tb-save i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-4);
+}
+
+.tb-save.is-ready i {
+  background: var(--ok);
+}
+
+.tb-save.is-loading i {
+  background: var(--warn);
+}
+
+.tb-save.is-error {
+  color: var(--danger);
+}
+
+.tb-save.is-error i {
+  background: var(--danger);
+}
+
 .tb-win {
   display: flex;
   height: 100%;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MAJOR, PAD, UNIT, gridOffset } from '../grid'
-import { BLOCK_DEFS, type BlockKind } from '../blockTypes'
+import { BLOCK_DEFS, defaultSize, type BlockKind } from '../blockTypes'
 import { useInteraction } from '../interaction'
 import { useShell, blockBox, type Block } from '../store'
 import { BlockView } from './BlockView'
@@ -83,6 +83,10 @@ export function Workspace() {
   }
 
   function createMenuItems(p: { x: number; y: number }): MenuItem[] {
+    // p — точка правого клика; блок встаёт под курсором, на сетке
+    const at = (kind: BlockKind) => () =>
+      createBlock(kind, p.x - defaultSize(kind).w / 2, p.y - UNIT * 2)
+
     return [
       {
         id: 'new',
@@ -93,14 +97,14 @@ export function Workspace() {
           label: d.label,
           hint: d.hint,
           glyph: d.glyph,
-          onSelect: () => createBlock(d.kind as BlockKind, p.x, p.y),
+          onSelect: at(d.kind as BlockKind),
         })),
       },
       {
         id: 'new-at-pad',
         label: 'Создать на полях',
         glyph: '⊞',
-        onSelect: () => createBlock('note', PAD + 128, PAD + 128),
+        onSelect: () => createBlock('note', PAD, PAD),
       },
       sep('sep1'),
       {
