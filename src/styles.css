@@ -1718,6 +1718,14 @@ body[data-dragging='linking'] .b-port-out {
   font-size: 11px;
 }
 
+.link-label {
+  fill: var(--fg-2);
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+}
+
 /* gnezda v paneli svoystv */
 .prop-portdir {
   flex: 0 0 auto;
@@ -1758,6 +1766,15 @@ body[data-dragging='linking'] .b-port-out {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.prop-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .prop-issue {

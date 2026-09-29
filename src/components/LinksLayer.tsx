@@ -15,12 +15,23 @@ interface DrawnLink {
   stub: boolean
   /** Точка для заглушки (связь в скрытую категорию). */
   stubAt?: Pt
+  /** Подпись ребра и её точка (середина кривой). */
+  label: string
+  mid: Pt
 }
 
 /** Кривая между гнездами: горизонтальные касательные. */
 function curve(a: Pt, b: Pt): string {
   const dx = Math.max(24, Math.abs(b.x - a.x) / 2)
   return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`
+}
+
+/**
+ * Середина той же кривой. При симметричных горизонтальных касательных
+ * точка t=0.5 — ровно среднее арифметическое концов, без кубики.
+ */
+function mid(a: Pt, b: Pt): Pt {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
 /**
@@ -74,17 +85,20 @@ export function LinksLayer({ canvasRef }: { canvasRef: RefObject<HTMLDivElement 
       const a = anchor(`${l.from.block}:${l.from.port}`)
       const b = anchor(`${l.to.block}:${l.to.port}`)
       if (a && b) {
-        drawn.push({ id: l.id, d: curve(a, b), title: l.label || 'Связь. Клик — удалить (вернёт Ctrl+Z).', stub: false })
+        drawn.push({ id: l.id, d: curve(a, b), title: l.label || 'Связь. Клик — удалить (вернёт Ctrl+Z).', stub: false, label: l.label, mid: mid(a, b) })
       } else if (a || b) {
         // второй конец в скрытой категории — короткая заглушка
         const p = (a ?? b) as Pt
         const dir = a ? 1 : -1
+        const end = { x: p.x + dir * 44, y: p.y }
         drawn.push({
           id: l.id,
-          d: `M ${p.x} ${p.y} L ${p.x + dir * 44} ${p.y}`,
+          d: `M ${p.x} ${p.y} L ${end.x} ${end.y}`,
           title: `${l.label || 'Связь'} — второй конец в другой категории. Клик — удалить.`,
           stub: true,
-          stubAt: { x: p.x + dir * 44, y: p.y },
+          stubAt: end,
+          label: l.label,
+          mid: mid(p, end),
         })
       }
     }
@@ -181,6 +195,11 @@ export function LinksLayer({ canvasRef }: { canvasRef: RefObject<HTMLDivElement 
           {p.stubAt && (
             <text x={p.stubAt.x} y={p.stubAt.y - 6} className="link-xcat" textAnchor="middle">
               ⇄
+            </text>
+          )}
+          {p.label && (
+            <text x={p.mid.x} y={p.mid.y - 7} className="link-label" textAnchor="middle">
+              {p.label}
             </text>
           )}
         </g>

@@ -340,11 +340,16 @@ function GraphSection() {
   const links = useShell((s) => s.links)
   const cycleLimit = useShell((s) => s.settings.cycleLimit)
   const setCycleLimit = useShell((s) => s.setCycleLimit)
+  const setLinkLabel = useShell((s) => s.setLinkLabel)
+  const removeLink = useShell((s) => s.removeLink)
   const lastRun = useRuntime((s) => s.lastRun)
 
   const issues = useMemo(() => validateLinks(blocks, links), [blocks, links])
   const errors = issues.filter((i) => i.level === 'error').length
   const warnings = issues.filter((i) => i.level === 'warning').length
+
+  const titles = useMemo(() => new Map(blocks.map((b) => [b.id, b.title])), [blocks])
+  const shown = links.slice(0, 50)
 
   return (
     <Section title={`Связи (${links.length})`}>
@@ -354,6 +359,31 @@ function GraphSection() {
         </button>
       </div>
       {lastRun && <p className="panel-stat">{runStatus(lastRun)}</p>}
+      {shown.length > 0 && (
+        <ul className="prop-links">
+          {shown.map((l) => (
+            <li className="prop-row" key={l.id}>
+              <TextRow
+                label={`${titles.get(l.from.block) ?? '?'} → ${titles.get(l.to.block) ?? '?'}`}
+                value={l.label}
+                onCommit={(v) => {
+                  if (v !== l.label) setLinkLabel(l.id, v)
+                }}
+              />
+              <button
+                className="prop-x"
+                onClick={() => removeLink(l.id)}
+                title="Удалить связь. Можно отменить (Ctrl+Z)."
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {links.length > shown.length && (
+        <p className="panel-stat">…и ещё {links.length - shown.length}</p>
+      )}
       <div className="prop-row">
         <span className="prop-label">Лимит итераций при циклах</span>
         <NumStepper value={cycleLimit} min={1} max={10000} unit="" step={10} title="Лимит итераций (шаг 10)" onChange={setCycleLimit} />
