@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { renderMarkdown } from '../lib/markdown'
+import { emitAction } from '../runtime'
 import { resolveBase } from '../blockTypes'
 import { useShell, type Block } from '../store'
 
@@ -186,7 +187,11 @@ function ActionsBody({ block }: { block: Block }) {
         <button
           key={name}
           className="b-action"
-          onClick={() => setHits((h) => ({ ...h, [name]: (h[name] ?? 0) + 1 }))}
+          title="Клик эмитит имя на выходы блока"
+          onClick={() => {
+            emitAction(block.id, name)
+            setHits((h) => ({ ...h, [name]: (h[name] ?? 0) + 1 }))
+          }}
         >
           <span className="b-action-glyph">▸</span>
           <span className="b-action-name">{name}</span>

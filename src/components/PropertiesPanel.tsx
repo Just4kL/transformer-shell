@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { MAJOR } from '../grid'
 import { BUILTINS, resolveDef } from '../blockTypes'
 import { validateLinks } from '../links'
+import { runGraph, useRuntime, type RunReport } from '../runtime'
 import { useShell, type Block, type CustomTypeDef } from '../store'
 
 /** Ширина панели — 4 больших квадрата, как и положено полке. */
@@ -333,12 +334,13 @@ function PortsSection({ block }: { block: Block }) {
   )
 }
 
-/** Граф целиком: счётчики, лимит циклов, проблемы валидации. */
+/** Граф целиком: запуск, счётчики, лимит циклов, проблемы валидации. */
 function GraphSection() {
   const blocks = useShell((s) => s.blocks)
   const links = useShell((s) => s.links)
   const cycleLimit = useShell((s) => s.settings.cycleLimit)
   const setCycleLimit = useShell((s) => s.setCycleLimit)
+  const lastRun = useRuntime((s) => s.lastRun)
 
   const issues = useMemo(() => validateLinks(blocks, links), [blocks, links])
   const errors = issues.filter((i) => i.level === 'error').length
@@ -346,6 +348,12 @@ function GraphSection() {
 
   return (
     <Section title={`Связи (${links.length})`}>
+      <div className="prop-row prop-buttons">
+        <button className="prop-btn is-run" onClick={() => runGraph()} title="Запустить граф (Ctrl+Enter)">
+          ▶ Запустить
+        </button>
+      </div>
+      {lastRun && <p className="panel-stat">{runStatus(lastRun)}</p>}
       <div className="prop-row">
         <span className="prop-label">Лимит итераций при циклах</span>
         <NumStepper value={cycleLimit} min={1} max={10000} unit="" step={10} title="Лимит итераций (шаг 10)" onChange={setCycleLimit} />
@@ -449,8 +457,21 @@ function TextAreaRow({
   )
 }
 
-function NumStepper({
-  value,
+/** Строка статуса последнего прогона. */
+function runStatus(r: RunReport): string {
+  const when = new Date(r.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  switch (r.stopped) {
+    case 'stable':
+      return `стабильно за ${r.ticks} такт. · значений ${r.emitted} · строк ${r.appended} · ${when}`
+    case 'limit':
+      return `стоп на лимите (${r.ticks} тактов) · ${when}`
+    case 'errors':
+      return `не стартовал: ошибки графа · ${when}`
+    case 'empty':
+      return `нечего запускать · ${when}`
+  }
+}
+function NumStepper({  value,
   min,
   max,
   title,

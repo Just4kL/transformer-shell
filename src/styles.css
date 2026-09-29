@@ -1550,6 +1550,17 @@ textarea {
   background: rgba(208, 52, 44, 0.12);
 }
 
+.prop-btn.is-run {
+  color: var(--ok);
+  border-color: rgba(86, 214, 160, 0.4);
+}
+
+.prop-btn.is-run:hover {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: rgba(86, 214, 160, 0.1);
+}
+
 /* крестик удаления категории — только при наведении */
 .rail-item {
   position: relative;

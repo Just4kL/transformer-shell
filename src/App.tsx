@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BAR_H, MAJOR } from './grid'
 import { useShell } from './store'
 import { initPersistence } from './persistence'
+import { runGraph } from './runtime'
 import { TopBar } from './components/TopBar'
 import { CategoryRail, Splitter } from './components/CategoryRail'
 import { Workspace } from './components/Workspace'
@@ -52,6 +53,13 @@ export default function App() {
       if (mod && (e.code === 'KeyY' || k === 'y' || k === 'н')) {
         e.preventDefault()
         redo()
+        return
+      }
+      // запуск графа — вне полей ввода (там Enter свой).
+      // e.code пуст у синтетических событий — дублируем проверкой key.
+      if ((e.code === 'Enter' || e.key === 'Enter') && (e.ctrlKey || e.metaKey) && !e.isComposing) {
+        e.preventDefault()
+        runGraph()
         return
       }
       if (useShell.getState().renamingId) return
