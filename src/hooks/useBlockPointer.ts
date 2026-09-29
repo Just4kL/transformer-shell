@@ -139,36 +139,50 @@ export function applyResize(
     }
   }
   if (dir.includes('w')) {
+    // правый край зафиксирован — двигается только левый
+    const right = base.x + base.w
     const r = snapFlexible(base.w - dx)
     w = r.value
     tiers.push(r.tier)
-    const g = nearestCandidate(base.x + base.w - r.value, cand.v)
+    const g = nearestCandidate(right - r.value, cand.v)
     if (g !== null) {
-      w = base.x + base.w - g
-      x = g
+      w = right - g
       gv.push(g)
     }
+    x = right - w
   }
   if (dir.includes('n')) {
+    // нижний край зафиксирован — двигается только верхний
+    const bottom = base.y + base.h
     const r = snapFlexible(base.h - dy)
     h = r.value
     tiers.push(r.tier)
-    const g = nearestCandidate(base.y + base.h - r.value, cand.h)
+    const g = nearestCandidate(bottom - r.value, cand.h)
     if (g !== null) {
-      h = base.y + base.h - g
-      y = g
+      h = bottom - g
       gh.push(g)
     }
+    y = bottom - h
   }
 
   // минимальный размер блока — один большой квадрат
   if (w < BLOCK_MIN) {
-    if (dir.includes('w')) x = base.x + base.w - BLOCK_MIN
     w = BLOCK_MIN
+    if (dir.includes('w')) x = base.x + base.w - BLOCK_MIN
   }
   if (h < BLOCK_MIN) {
-    if (dir.includes('n')) y = base.y + base.h - BLOCK_MIN
     h = BLOCK_MIN
+    if (dir.includes('n')) y = base.y + base.h - BLOCK_MIN
+  }
+
+  // левый/верхний край упирается в ноль поля, а не уходит за него
+  if (dir.includes('w') && x < 0) {
+    x = 0
+    w = base.x + base.w
+  }
+  if (dir.includes('n') && y < 0) {
+    y = 0
+    h = base.y + base.h
   }
 
   const maxW = snapDown(Math.max(BLOCK_MIN, canvas.w - x), UNIT)
