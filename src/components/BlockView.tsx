@@ -134,6 +134,9 @@ export function BlockView({
         </div>
       )}
 
+      {/* гнёзда связей: входы слева, выходы справа */}
+      {!block.collapsed && <PortDots block={block} />}
+
       {!block.collapsed && !active && (
         <>
           {RESIZE_DIRS.map((d) => (
@@ -152,8 +155,46 @@ export function BlockView({
   )
 }
 
-function RenameInput({ defaultValue, onDone }: { defaultValue: string; onDone: (v: string) => void }) {
-  const ref = useRef<HTMLInputElement>(null)
+/**
+ * Гнёзда блока: входы — левый край, выходы — правый.
+ * Тянуть связь — от выходного гнезда; бросить — на входном.
+ * Каждое гнездо помечено data-port="blockId:portId" — по этому
+ * атрибуту слой связей находит якоря замерами.
+ */
+function PortDots({ block }: { block: Block }) {
+  const begin = useInteraction((s) => s.begin)
+  const ins = block.ports.filter((p) => p.dir === 'in')
+  const outs = block.ports.filter((p) => p.dir === 'out')
+
+  const startLink = (e: React.PointerEvent, portId: string) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    // всплытие не останавливаем: пусть блок заодно выберется в панель
+    begin({ linking: { block: block.id, port: portId } })
+    document.body.dataset.dragging = 'linking'
+  }
+
+  const dot = (portId: string, label: string, dir: 'in' | 'out', i: number) => (
+    <span
+      key={portId}
+      className={`b-port b-port-${dir}`}
+      data-port={`${block.id}:${portId}`}
+      data-dir={dir}
+      style={{ top: BLOCK_HEAD + 10 + i * 18 }}
+      title={`${label} — ${dir === 'in' ? 'вход' : 'выход'}. Тяни ${dir === 'in' ? 'сюда' : 'отсюда'} связь.`}
+      onPointerDown={dir === 'out' ? (e) => startLink(e, portId) : undefined}
+    />
+  )
+
+  return (
+    <>
+      {ins.map((p, i) => dot(p.id, p.label, 'in', i))}
+      {outs.map((p, i) => dot(p.id, p.label, 'out', i))}
+    </>
+  )
+}
+
+function RenameInput({ defaultValue, onDone }: { defaultValue: string; onDone: (v: string) => void }) {  const ref = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const el = ref.current

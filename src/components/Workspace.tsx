@@ -6,6 +6,7 @@ import { useInteraction } from '../interaction'
 import { useShell, blockBox, type Block } from '../store'
 import { BlockView } from './BlockView'
 import { blockMenuItems } from './blockMenu'
+import { LinksLayer } from './LinksLayer'
 import { ContextMenu } from './ContextMenu'
 import { sep, type MenuItem, type MenuRequest } from './menu'
 
@@ -238,6 +239,7 @@ export function Workspace() {
           ))}
 
           <Guides />
+          <LinksLayer canvasRef={canvasRef} />
           {menu && hoverPoint && <CreationMark point={hoverPoint} />}
         </div>
       </div>

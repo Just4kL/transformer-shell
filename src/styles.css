@@ -1614,3 +1614,197 @@ textarea {
   border-right-width: 4px;
   opacity: 0.85;
 }
+/* ==========================================================================
+   Svyazi mezhdu blokami (Faza B)
+   --------------------------------------------------------------------------
+   Gnezda - tochki na krayakh bloka. Sloy SVG poverkh kholsta risuet krivye.
+   Puti klikabelny cherez shirokuyu nevidimuyu zonu popadaniya.
+   (ASCII-only: etot kusok edetsya v CSS cherez shell, poetomu bez kirillitsy.)
+   ========================================================================== */
+
+.b-port {
+  position: absolute;
+  z-index: 4;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  border: 2px solid var(--fg-4);
+  transform: translateY(-50%);
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+.b-port-in {
+  left: -7px;
+}
+
+.b-port-out {
+  right: -7px;
+  cursor: crosshair;
+}
+
+.b-port:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(78, 163, 255, 0.6);
+  transform: translateY(-50%) scale(1.25);
+}
+
+/* poka tyanut svyaz - vkhodnye gnezda podsveceny */
+body[data-dragging='linking'] {
+  cursor: crosshair;
+  user-select: none;
+}
+
+body[data-dragging='linking'] .b-port-in {
+  border-color: var(--ok);
+  box-shadow: 0 0 8px rgba(86, 214, 160, 0.5);
+}
+
+body[data-dragging='linking'] .b-port-out {
+  cursor: crosshair;
+}
+
+.links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.link {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0.85;
+}
+
+.link-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+}
+
+.link-hit:hover + .link {
+  stroke-width: 3;
+  opacity: 1;
+}
+
+.link-stub {
+  stroke-dasharray: 6 4;
+}
+
+.link-temp {
+  stroke-dasharray: 8 5;
+  opacity: 0.9;
+}
+
+.link-xcat {
+  fill: var(--fg-3);
+  font-size: 11px;
+}
+
+/* gnezda v paneli svoystv */
+.prop-portdir {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.prop-portdir-in {
+  color: var(--ok);
+}
+
+.prop-portdir-out {
+  color: var(--accent);
+}
+
+.prop-x {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  color: var(--fg-4);
+  font-size: 9px;
+}
+
+.prop-x:hover {
+  color: #ff8b8b;
+  background: rgba(208, 52, 44, 0.2);
+}
+
+/* problemy grafa */
+.prop-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-issue {
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  border-left: 2px solid var(--line-3);
+  background: var(--bg-2);
+  color: var(--fg-2);
+}
+
+.prop-issue.is-error {
+  border-left-color: var(--danger);
+  color: #ff9b9b;
+}
+
+.prop-issue.is-warning {
+  border-left-color: var(--warn);
+}
+
+.prop-issue.is-info {
+  border-left-color: var(--accent);
+  color: var(--fg-3);
+}
+
+/* beydzh svyazey v paneli okna */
+.tb-links {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+  user-select: none;
+  color: var(--fg-3);
+}
+
+.tb-links i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tb-links.is-warn {
+  color: var(--warn);
+}
+
+.tb-links.is-warn i {
+  background: var(--warn);
+}
+
+.tb-links.is-error {
+  color: var(--danger);
+}
+
+.tb-links.is-error i {
+  background: var(--danger);
+}
+

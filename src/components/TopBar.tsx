@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MAJOR, UNIT, fmt } from '../grid'
 import { usePersistStatus } from '../persistence'
+import { hasErrors, validateLinks } from '../links'
 import { useHistoryStatus, useShell } from '../store'
 import { getBridge } from '../bridge'
 
@@ -41,6 +42,7 @@ export function TopBar() {
 
       <div className="tb-tools" data-no-drag>
         <SaveIndicator />
+        <LinksBadge />
         <span className="tb-group" role="group" aria-label="Отмена и возврат">
           <button className="tb-btn tb-icon" onClick={undo} disabled={!canUndo} title="Отменить (Ctrl+Z)">
             ↩
@@ -109,9 +111,32 @@ export function TopBar() {
   )
 }
 
+/** Бейдж связей: счётчик всегда (когда связи есть), проблемы — цветом. */
+function LinksBadge() {
+  const blocks = useShell((s) => s.blocks)
+  const links = useShell((s) => s.links)
+  const issues = useMemo(() => validateLinks(blocks, links), [blocks, links])
+  if (links.length === 0 && issues.length === 0) return null
+
+  const errors = issues.filter((i) => i.level === 'error').length
+  const cls = hasErrors(issues) ? 'tb-links is-error' : issues.length > 0 ? 'tb-links is-warn' : 'tb-links'
+  const title =
+    issues.length > 0
+      ? issues
+          .slice(0, 5)
+          .map((i) => i.message)
+          .join('\n')
+      : `Связей: ${links.length}. Проблем нет.`
+  return (
+    <span className={cls} title={title}>
+      <i aria-hidden />⎇ {links.length}
+      {errors > 0 ? ` !${errors}` : ''}
+    </span>
+  )
+}
+
 /** Состояние автосохранения раскладки. */
-function SaveIndicator() {
-  const phase = usePersistStatus((s) => s.phase)
+function SaveIndicator() {  const phase = usePersistStatus((s) => s.phase)
   const lastSaved = usePersistStatus((s) => s.lastSaved)
   const error = usePersistStatus((s) => s.error)
   const path = usePersistStatus((s) => s.path)

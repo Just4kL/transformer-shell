@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MAJOR } from '../grid'
 import { BUILTINS, resolveDef } from '../blockTypes'
+import { validateLinks } from '../links'
 import { useShell, type Block, type CustomTypeDef } from '../store'
 
 /** Ширина панели — 4 больших квадрата, как и положено полке. */
@@ -11,6 +12,7 @@ export const PANEL_W = MAJOR * 4
  * Показывает выбранный блок: название, тип, категорию, размер, состояние.
  * Если тип пользовательский — здесь же его оформление: имя, значок,
  * базовый рендер, габарит и начальное содержимое новых блоков.
+ * Внизу всегда — раздел связей: гнезда блока, лимит циклов, проблемы графа.
  */
 export function PropertiesPanel() {
   const open = useShell((s) => s.panelOpen)
@@ -30,6 +32,7 @@ export function PropertiesPanel() {
 
       <div className="panel-body">
         {block ? <BlockProps key={block.id} block={block} /> : <EmptyProps blocks={blocksCount} types={typesCount} />}
+        <GraphSection />
       </div>
     </aside>
   )
@@ -168,6 +171,8 @@ function BlockProps({ block }: { block: Block }) {
         </div>
       </Section>
 
+      <PortsSection block={block} />
+
       {custom && (
         <TypeEditor
           type={custom}
@@ -285,6 +290,90 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+/** Гнезда блока: переименование, удаление, добавление входов и выходов. */
+function PortsSection({ block }: { block: Block }) {
+  const addPort = useShell((s) => s.addPort)
+  const renamePort = useShell((s) => s.renamePort)
+  const removePort = useShell((s) => s.removePort)
+
+  return (
+    <Section title={`Гнезда (${block.ports.length})`}>
+      {block.ports.length === 0 && (
+        <p className="panel-hint">Гнезд нет — связи тянуть некуда. Добавь вход или выход.</p>
+      )}
+      {block.ports.map((p) => (
+        <div className="prop-row" key={p.id}>
+          <span className={`prop-portdir prop-portdir-${p.dir}`} title={p.dir === 'in' ? 'вход' : 'выход'}>
+            {p.dir === 'in' ? '→' : '←'}
+          </span>
+          <TextRow
+            label=""
+            value={p.label}
+            onCommit={(v) => renamePort(block.id, p.id, v)}
+          />
+          <button
+            className="prop-x"
+            onClick={() => removePort(block.id, p.id)}
+            title={`Удалить гнездо «${p.label}» — связи через него тоже удалятся. Можно отменить (Ctrl+Z).`}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      <div className="prop-row prop-buttons">
+        <button className="prop-btn" onClick={() => addPort(block.id, 'in')}>
+          + вход
+        </button>
+        <button className="prop-btn" onClick={() => addPort(block.id, 'out')}>
+          + выход
+        </button>
+      </div>
+      <p className="panel-hint">Связь тянется от выходного гнезда (правый край блока) до входного.</p>
+    </Section>
+  )
+}
+
+/** Граф целиком: счётчики, лимит циклов, проблемы валидации. */
+function GraphSection() {
+  const blocks = useShell((s) => s.blocks)
+  const links = useShell((s) => s.links)
+  const cycleLimit = useShell((s) => s.settings.cycleLimit)
+  const setCycleLimit = useShell((s) => s.setCycleLimit)
+
+  const issues = useMemo(() => validateLinks(blocks, links), [blocks, links])
+  const errors = issues.filter((i) => i.level === 'error').length
+  const warnings = issues.filter((i) => i.level === 'warning').length
+
+  return (
+    <Section title={`Связи (${links.length})`}>
+      <div className="prop-row">
+        <span className="prop-label">Лимит итераций при циклах</span>
+        <NumStepper value={cycleLimit} min={1} max={10000} unit="" step={10} title="Лимит итераций (шаг 10)" onChange={setCycleLimit} />
+      </div>
+      {issues.length === 0 ? (
+        <p className="panel-hint">
+          {links.length === 0
+            ? 'Связей нет. Тяни от выходного гнезда блока до входного.'
+            : 'Проблем нет: все концы на месте, направления верные.'}
+        </p>
+      ) : (
+        <ul className="prop-issues">
+          {issues.map((issue, n) => (
+            <li key={`${issue.code}-${issue.linkId ?? 'graph'}-${n}`} className={`prop-issue is-${issue.level}`}>
+              {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
+      {(errors > 0 || warnings > 0) && (
+        <p className="panel-stat">
+          ошибок: {errors} · предупреждений: {warnings}
+        </p>
+      )}
+    </Section>
+  )
+}
+
 /** Однострочное поле: черновик внутри, коммит по Enter или уходу фокуса. */
 function TextRow({
   label,
@@ -365,23 +454,28 @@ function NumStepper({
   min,
   max,
   title,
+  unit = '◆',
+  step = 1,
   onChange,
 }: {
   value: number
   min: number
   max: number
   title: string
+  unit?: string
+  step?: number
   onChange: (v: number) => void
 }) {
   return (
     <span className="prop-stepper" title={title}>
-      <button disabled={value <= min} onClick={() => onChange(value - 1)}>
+      <button disabled={value <= min} onClick={() => onChange(value - step)}>
         −
       </button>
       <span className="prop-num">
-        {value}◆
+        {value}
+        {unit}
       </span>
-      <button disabled={value >= max} onClick={() => onChange(value + 1)}>
+      <button disabled={value >= max} onClick={() => onChange(value + step)}>
         +
       </button>
     </span>

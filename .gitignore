@@ -3,6 +3,7 @@ dist/
 dist-electron/
 release/
 temp/
+temp_test/
 *.log
 .DS_Store
 Thumbs.db

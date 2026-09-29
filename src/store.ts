@@ -14,17 +14,22 @@ import {
 import { defaultSize, resolveDef, type BlockKind, type BuiltinKind, type CustomTypeDef } from './blockTypes'
 import {
   DEFAULT_CATEGORIES,
+  DEFAULT_SETTINGS,
   type Block,
   type Category,
   type ExpandMode,
+  type LayoutSettings,
+  type Link,
+  type LinkEndpoint,
   type PersistedState,
+  type Port,
   type Rect,
 } from './layout'
 
 // Схема данных живёт в layout.ts; переэкспортируем, чтобы существующие
 // импорты из store продолжали работать.
-export { DEFAULT_CATEGORIES }
-export type { Block, Category, ExpandMode, PersistedState, Rect }
+export { DEFAULT_CATEGORIES, DEFAULT_SETTINGS }
+export type { Block, Category, ExpandMode, LayoutSettings, Link, LinkEndpoint, PersistedState, Port, Rect }
 export type { CustomTypeDef }
 
 interface ShellState {
@@ -80,6 +85,25 @@ interface ShellState {
   /** Удалить тип. Блоки этого типа переходят на его базовый рендер. */
   removeCustomType: (id: string) => void
 
+  /** Связи между портами. Не сохраняются отдельно — часть документа. */
+  links: Link[]
+  settings: LayoutSettings
+  setCycleLimit: (n: number) => void
+  /**
+   * Новая связь. Возвращает id либо null, если соединять нечего:
+   * не out→in, петля в тот же порт, дубликат пары, конец не найден,
+   * упёрлись в лимит. Невалидный бросок просто не создаёт связь.
+   */
+  addLink: (from: LinkEndpoint, to: LinkEndpoint) => string | null
+  removeLink: (id: string) => void
+  setLinkLabel: (id: string, label: string) => void
+
+  /** Гнезда блока. Лимит 200 на блок — предохранитель, не цель. */
+  addPort: (blockId: string, dir: 'in' | 'out', label?: string) => string
+  renamePort: (blockId: string, portId: string, label: string) => void
+  /** Удалить гнездо. Связи через него удаляются тем же шагом. */
+  removePort: (blockId: string, portId: string) => void
+
   setCanvas: (size: { w: number; h: number }) => void
   toggleGrid: () => void
   clearWorkspace: () => void
@@ -115,6 +139,15 @@ const normRect = (r: Rect): Rect => ({
   h: Math.max(BLOCK_MIN, snap(r.h, UNIT)),
 })
 
+/** Стартовая пара гнезд нового блока — сразу можно связывать. */
+const defaultPorts = (seqStart: number): { ports: Port[]; nextSeq: number } => ({
+  ports: [
+    { id: `p${seqStart}`, label: 'Вход', dir: 'in', data: 'any' },
+    { id: `p${seqStart + 1}`, label: 'Выход', dir: 'out', data: 'any' },
+  ],
+  nextSeq: seqStart + 2,
+})
+
 export const useShell = create<ShellState>((set, get) => ({
   railWidth: RAIL_DEFAULT,
   railCollapsed: false,
@@ -122,6 +155,8 @@ export const useShell = create<ShellState>((set, get) => ({
   activeCategory: 'core',
   customTypes: [],
   blocks: [],
+  links: [],
+  settings: { ...DEFAULT_SETTINGS },
   seq: 0,
   showGrid: true,
   panelOpen: true,
@@ -191,12 +226,13 @@ export const useShell = create<ShellState>((set, get) => ({
       collapsed: false,
       expanded: 'normal',
       content: def.blank,
+      ports: defaultPorts(s.seq + 1).ports,
     }
 
     get().checkpoint()
     set((st) => ({
       blocks: [...st.blocks, block],
-      seq: st.seq + 1,
+      seq: st.seq + 3,
       renamingId: id, // сразу предлагаем назвать блок
       selectedId: id,
     }))
@@ -223,6 +259,7 @@ export const useShell = create<ShellState>((set, get) => ({
     const size = defaultSize(base, s.customTypes)
     const typeId = `u${s.seq}`
     const blockId = `b${s.seq + 1}`
+    const { ports } = defaultPorts(s.seq + 2)
 
     const maxX = Math.max(PAD, s.canvas.w - PAD - size.w)
     const maxY = Math.max(PAD, s.canvas.h - PAD - size.h)
@@ -260,9 +297,10 @@ export const useShell = create<ShellState>((set, get) => ({
           collapsed: false,
           expanded: 'normal',
           content: def.blank,
+          ports,
         },
       ],
-      seq: st.seq + 2,
+      seq: st.seq + 4,
       renamingId: null, // название правится в панели, вместе с типом
       selectedId: blockId,
     }))
@@ -275,6 +313,8 @@ export const useShell = create<ShellState>((set, get) => ({
     get().checkpoint()
     set((s) => ({
       blocks: s.blocks.filter((b) => b.id !== id),
+      // связи висели на блоке — уходят тем же шагом
+      links: s.links.filter((l) => l.from.block !== id && l.to.block !== id),
       renamingId: s.renamingId === id ? null : s.renamingId,
       selectedId: s.selectedId === id ? null : s.selectedId,
     }))
@@ -435,6 +475,96 @@ export const useShell = create<ShellState>((set, get) => ({
     }))
   },
 
+  addPort: (blockId, dir, label) => {
+    const s = get()
+    const block = s.blocks.find((b) => b.id === blockId)
+    if (!block || block.ports.length >= 200) return ''
+    const id = `p${s.seq}`
+    get().checkpoint()
+    set((st) => ({
+      blocks: st.blocks.map((b) =>
+        b.id === blockId
+          ? {
+              ...b,
+              ports: [
+                ...b.ports,
+                {
+                  id,
+                  label: (label ?? (dir === 'in' ? 'Вход' : 'Выход')).slice(0, 100) || 'Порт',
+                  dir,
+                  data: 'any' as const,
+                },
+              ],
+            }
+          : b,
+      ),
+      seq: st.seq + 1,
+    }))
+    return id
+  },
+
+  renamePort: (blockId, portId, label) => {
+    const clean = label.trim().slice(0, 100)
+    if (!clean) return
+    get().checkpoint()
+    set((s) => ({
+      blocks: s.blocks.map((b) =>
+        b.id === blockId
+          ? { ...b, ports: b.ports.map((p) => (p.id === portId ? { ...p, label: clean } : p)) }
+          : b,
+      ),
+    }))
+  },
+
+  removePort: (blockId, portId) => {
+    get().checkpoint()
+    set((s) => ({
+      blocks: s.blocks.map((b) =>
+        b.id === blockId ? { ...b, ports: b.ports.filter((p) => p.id !== portId) } : b,
+      ),
+      links: s.links.filter((l) => !(l.from.block === blockId && l.from.port === portId) && !(l.to.block === blockId && l.to.port === portId)),
+    }))
+  },
+
+  addLink: (from, to) => {
+    const s = get()
+    if (s.links.length >= 2000) return null
+    const dirOf = (block: string, port: string): 'in' | 'out' | null =>
+      s.blocks.find((b) => b.id === block)?.ports.find((p) => p.id === port)?.dir ?? null
+    // ворота: невалидный бросок не создаёт связь, а не создаёт проблему
+    if (dirOf(from.block, from.port) !== 'out') return null
+    if (dirOf(to.block, to.port) !== 'in') return null
+    if (from.block === to.block && from.port === to.port) return null
+    const pair = `${from.block}:${from.port}>${to.block}:${to.port}`
+    if (s.links.some((l) => `${l.from.block}:${l.from.port}>${l.to.block}:${l.to.port}` === pair)) {
+      return null
+    }
+    const id = `l${s.seq}`
+    get().checkpoint()
+    set((st) => ({
+      links: [...st.links, { id, from: { ...from }, to: { ...to }, label: '' }],
+      seq: st.seq + 1,
+    }))
+    return id
+  },
+
+  removeLink: (id) => {
+    get().checkpoint()
+    set((s) => ({ links: s.links.filter((l) => l.id !== id) }))
+  },
+
+  setLinkLabel: (id, label) => {
+    get().checkpoint()
+    set((s) => ({
+      links: s.links.map((l) => (l.id === id ? { ...l, label: label.slice(0, 100) } : l)),
+    }))
+  },
+
+  setCycleLimit: (n) => {
+    get().checkpoint()
+    set({ settings: { cycleLimit: Math.round(clamp(n, 1, 10000)) } })
+  },
+
   setCanvas: (size) => {
     const cur = get().canvas
     if (cur.w === size.w && cur.h === size.h) return
@@ -444,18 +574,22 @@ export const useShell = create<ShellState>((set, get) => ({
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   clearWorkspace: () => {
     get().checkpoint()
-    set({ blocks: [], renamingId: null, selectedId: null })
+    set({ blocks: [], links: [], renamingId: null, selectedId: null })
   },
   /** Очистить активную категорию — одна точка истории на все блоки. */
   clearCategory: () => {
     const s = get()
     if (!s.blocks.some((b) => b.category === s.activeCategory)) return
     get().checkpoint()
-    set((st) => ({
-      blocks: st.blocks.filter((b) => b.category !== st.activeCategory),
-      renamingId: null,
-      selectedId: null,
-    }))
+    set((st) => {
+      const gone = new Set(st.blocks.filter((b) => b.category === st.activeCategory).map((b) => b.id))
+      return {
+        blocks: st.blocks.filter((b) => b.category !== st.activeCategory),
+        links: st.links.filter((l) => !gone.has(l.from.block) && !gone.has(l.to.block)),
+        renamingId: null,
+        selectedId: null,
+      }
+    })
   },
 
   /** Загрузка раскладки с диска. Данные уже прошли sanitize(). */
@@ -474,6 +608,8 @@ export const useShell = create<ShellState>((set, get) => ({
       categories: p.categories,
       customTypes: p.customTypes,
       blocks: p.blocks,
+      links: p.links,
+      settings: { ...p.settings },
       seq: p.seq,
       // правка названия при загрузке не должна начинаться сама
       renamingId: null,
@@ -495,6 +631,8 @@ export const useShell = create<ShellState>((set, get) => ({
       customTypes: s.customTypes,
       seq: s.seq,
       blocks: s.blocks,
+      links: s.links,
+      settings: { ...s.settings },
     }
   },
 

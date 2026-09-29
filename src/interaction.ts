@@ -7,6 +7,11 @@ export interface Guides {
   h: number[]
 }
 
+export interface LinkFrom {
+  block: string
+  port: string
+}
+
 interface InteractionState {
   /** id перетаскиваемого блока */
   moving: string | null
@@ -14,12 +19,14 @@ interface InteractionState {
   resizing: string | null
   /** тянут ли разделитель рельса */
   rail: boolean
+  /** тянут ли связь из выходного гнезда */
+  linking: LinkFrom | null
   guides: Guides
   tier: SnapTier | null
   /** живой размер рельса при перетаскивании разделителя */
   railPreview: number | null
 
-  begin: (p: { moving?: string | null; resizing?: string | null; rail?: boolean }) => void
+  begin: (p: { moving?: string | null; resizing?: string | null; rail?: boolean; linking?: LinkFrom | null }) => void
   setGuides: (g: Guides) => void
   setTier: (t: SnapTier | null) => void
   setRailPreview: (w: number | null) => void
@@ -32,6 +39,7 @@ export const useInteraction = create<InteractionState>((set) => ({
   moving: null,
   resizing: null,
   rail: false,
+  linking: null,
   guides: EMPTY,
   tier: null,
   railPreview: null,
@@ -40,10 +48,10 @@ export const useInteraction = create<InteractionState>((set) => ({
   setGuides: (guides) => set({ guides }),
   setTier: (tier) => set({ tier }),
   setRailPreview: (railPreview) => set({ railPreview }),
-  end: () => set({ moving: null, resizing: null, rail: false, guides: EMPTY, tier: null, railPreview: null }),
+  end: () => set({ moving: null, resizing: null, rail: false, linking: null, guides: EMPTY, tier: null, railPreview: null }),
 }))
 
 export const isInteracting = (): boolean => {
   const s = useInteraction.getState()
-  return Boolean(s.moving || s.resizing || s.rail)
+  return Boolean(s.moving || s.resizing || s.rail || s.linking)
 }
