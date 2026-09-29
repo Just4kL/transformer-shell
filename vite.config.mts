@@ -14,6 +14,20 @@ export default defineConfig({
   server: {
     port: 5273,
     strictPort: true,
+    watch: {
+      // dev-сервер не следит за артефактами сборки: иначе его вотчер
+      // держит открытые хендлы в release/ и валит electron-builder
+      // с EPERM на переименовании win-unpacked (бета.2, проверено логом)
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/dist-electron/**',
+        '**/release/**',
+        '**/temp/**',
+        '**/temp_test/**',
+      ],
+    },
   },
   build: {
     outDir: 'dist',
