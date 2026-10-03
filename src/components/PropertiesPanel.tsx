@@ -34,6 +34,7 @@ export function PropertiesPanel() {
       <div className="panel-body">
         {block ? <BlockProps key={block.id} block={block} /> : <EmptyProps blocks={blocksCount} types={typesCount} />}
         <GraphSection />
+        <TemplatesSection />
       </div>
     </aside>
   )
@@ -407,6 +408,72 @@ function GraphSection() {
         <p className="panel-stat">
           ошибок: {errors} · предупреждений: {warnings}
         </p>
+      )}
+    </Section>
+  )
+}
+
+/** Шаблоны: снять снимок документа, применить, удалить. */
+function TemplatesSection() {
+  const templates = useShell((s) => s.templates)
+  const saveTemplate = useShell((s) => s.saveTemplate)
+  const applyTemplate = useShell((s) => s.applyTemplate)
+  const deleteTemplate = useShell((s) => s.deleteTemplate)
+  const [draft, setDraft] = useState('')
+
+  const names = Object.keys(templates)
+  const save = () => {
+    if (saveTemplate(draft) !== '') setDraft('')
+  }
+
+  return (
+    <Section title={`Шаблоны (${names.length})`}>
+      <div className="prop-row">
+        <input
+          className="prop-input prop-input-wide"
+          value={draft}
+          placeholder="Имя снимка…"
+          maxLength={100}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setDraft('')
+          }}
+        />
+        <button className="prop-btn" onClick={save} title="Снять снимок текущего документа">
+          Снять
+        </button>
+      </div>
+      {names.length === 0 ? (
+        <p className="panel-hint">Снимков нет. Сними текущий документ — применишь одной кнопкой.</p>
+      ) : (
+        <ul className="prop-links">
+          {names.map((name) => {
+            const t = templates[name]
+            const info = `${t.blocks.length} бл. · ${t.links.length} св.`
+            return (
+              <li className="prop-row" key={name}>
+                <span className="prop-label" title={info}>
+                  {name}
+                </span>
+                <button
+                  className="prop-btn"
+                  onClick={() => applyTemplate(name)}
+                  title={`Применить «${name}» (${info}). Текущий документ заменится — вернёт Ctrl+Z.`}
+                >
+                  Применить
+                </button>
+                <button
+                  className="prop-x"
+                  onClick={() => deleteTemplate(name)}
+                  title={`Удалить «${name}». Можно отменить (Ctrl+Z).`}
+                >
+                  ✕
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </Section>
   )

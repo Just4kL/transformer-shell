@@ -89,7 +89,14 @@ interface ShellState {
   links: Link[]
   settings: LayoutSettings
   setCycleLimit: (n: number) => void
-  /**
+
+  /** Именованные снимки документа. Хранятся в том же файле раскладки. */
+  templates: Record<string, PersistedState>
+  /** Снять снимок под именем. Пустое имя — отказ (''). Повтор тоже снимок (перезапись). */
+  saveTemplate: (name: string) => string
+  /** Применить: полная замена документа. Одна точка истории. Нет такого — false. */
+  applyTemplate: (name: string) => boolean
+  deleteTemplate: (name: string) => void  /**
    * Новая связь. Возвращает id либо null, если соединять нечего:
    * не out→in, петля в тот же порт, дубликат пары, конец не найден,
    * упёрлись в лимит. Невалидный бросок просто не создаёт связь.
@@ -157,6 +164,7 @@ export const useShell = create<ShellState>((set, get) => ({
   blocks: [],
   links: [],
   settings: { ...DEFAULT_SETTINGS },
+  templates: {},
   seq: 0,
   showGrid: true,
   panelOpen: true,
@@ -565,6 +573,38 @@ export const useShell = create<ShellState>((set, get) => ({
     set({ settings: { cycleLimit: Math.round(clamp(n, 1, 10000)) } })
   },
 
+  saveTemplate: (name) => {
+    const clean = name.trim().slice(0, 100)
+    if (!clean) return ''
+    const s = get()
+    if (Object.keys(s.templates).length >= 20 && s.templates[clean] === undefined) return ''
+    get().checkpoint()
+    // снимок без вложенных шаблонов — иначе размер растёт экспоненциально
+    const snap: PersistedState = { ...get().toPersisted(), templates: {} }
+    set((st) => ({ templates: { ...st.templates, [clean]: snap } }))
+    return clean
+  },
+
+  applyTemplate: (name) => {
+    const tpl = get().templates[name]
+    if (!tpl) return false
+    get().checkpoint()
+    // историю НЕ сбрасываем: применение отменяется как обычная правка.
+    // Библиотеку шаблонов не трогаем: применяется документ, а не библиотека.
+    get().hydrate({ ...tpl, templates: get().templates }, false)
+    return true
+  },
+
+  deleteTemplate: (name) => {
+    if (get().templates[name] === undefined) return
+    get().checkpoint()
+    set((s) => {
+      const next = { ...s.templates }
+      delete next[name]
+      return { templates: next }
+    })
+  },
+
   setCanvas: (size) => {
     const cur = get().canvas
     if (cur.w === size.w && cur.h === size.h) return
@@ -610,6 +650,7 @@ export const useShell = create<ShellState>((set, get) => ({
       blocks: p.blocks,
       links: p.links,
       settings: { ...p.settings },
+      templates: { ...p.templates },
       seq: p.seq,
       // правка названия при загрузке не должна начинаться сама
       renamingId: null,
@@ -633,6 +674,7 @@ export const useShell = create<ShellState>((set, get) => ({
       blocks: s.blocks,
       links: s.links,
       settings: { ...s.settings },
+      templates: { ...s.templates },
     }
   },
 

@@ -12,6 +12,9 @@ export default defineConfig({
     },
   },
   server: {
+    // IPv4 явно: на этой машине localhost резолвится в 127.0.0.1,
+    // а дефолтный 'localhost' иногда садится только на ::1
+    host: '127.0.0.1',
     port: 5273,
     strictPort: true,
     watch: {

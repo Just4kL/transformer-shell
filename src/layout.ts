@@ -15,9 +15,14 @@ import { BLOCK_DEFS, isBuiltin, type BlockKind, type CustomTypeDef } from './blo
  *
  * v3: порты на блоках, связи плоским списком, настройки (лимит циклов).
  * Проект — в docs/links-schema.md.
+ *
+ * v4: шаблоны — именованные снимки документа целиком. Хранятся в том же
+ * файле (отдельный файл = новый мост и второй источник правды, а бэкап
+ * удобнее одним файлом). Вложенность запрещена: шаблон внутри шаблона
+ * не хранится, иначе размер растёт экспоненциально.
  */
 
-export const LAYOUT_VERSION = 3
+export const LAYOUT_VERSION = 4
 
 /** Предохранители, чтобы файл не мог вырасти до бесконечности. */
 const MAX_BLOCKS = 500
@@ -27,6 +32,7 @@ const MAX_CUSTOM_TYPES = 100
 const MAX_TYPE_BLANK = 50_000
 const MAX_PORTS = 200
 const MAX_LINKS = 2000
+const MAX_TEMPLATES = 20
 
 export interface Rect {
   x: number
@@ -111,6 +117,11 @@ export interface PersistedState {
   /** Связи между портами, плоским списком. */
   links: Link[]
   settings: LayoutSettings
+  /**
+   * Шаблоны: имя -> снимок документа. Снимок — полный PersistedState,
+   * но БЕЗ вложенных шаблонов (иначе размер растёт экспоненциально).
+   */
+  templates: Record<string, PersistedState>
 }
 
 // ── примитивы проверки ──────────────────────────────────────────────────────
@@ -227,7 +238,8 @@ function readSettings(v: unknown): LayoutSettings {
  * Возвращает null, если восстановить нечего — тогда приложение
  * стартует с пустой раскладки, а не падает.
  */
-export function sanitize(raw: unknown): PersistedState | null {
+export function sanitize(raw: unknown, depth = 0): PersistedState | null {
+  if (depth > 5) return null // матрешка из шаблонов: дальше не разбираем
   const root = isObj(raw) ? raw : null
   if (!root) return null
 
@@ -327,6 +339,24 @@ export function sanitize(raw: unknown): PersistedState | null {
 
   const settings = readSettings(state.settings)
 
+  // шаблоны: каждый — либо конверт {version, state} (так пишут руки),
+  // либо голое состояние (так пишет saveTemplate). Голое заворачиваем
+  // в текущую версию: его писал код этой же версии, полей из будущего
+  // там быть не может. Проверяется тем же sanitize рекурсивно.
+  const templates: Record<string, PersistedState> = {}
+  if (isObj(state.templates)) {
+    for (const [name, raw] of Object.entries(state.templates).slice(0, MAX_TEMPLATES)) {
+      const cleanName = name.slice(0, 100).trim()
+      if (!cleanName || templates[cleanName] !== undefined) continue
+      const envelope =
+        isObj(raw) && isObj((raw as Record<string, unknown>).state)
+          ? raw
+          : { version: LAYOUT_VERSION, savedAt: '', state: raw }
+      const inner = sanitize(envelope, depth + 1)
+      if (inner) templates[cleanName] = { ...inner, templates: {} }
+    }
+  }
+
   // счётчик идентификаторов — обязан быть больше всего, что уже занято.
   // Сканируем блоки, типы, порты и связи: счётчик общий.
   let highest = 0
@@ -355,5 +385,6 @@ export function sanitize(raw: unknown): PersistedState | null {
     blocks,
     links,
     settings,
+    templates,
   }
 }
