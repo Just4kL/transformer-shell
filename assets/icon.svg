@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="tileBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2230"/>
+      <stop offset="0.55" stop-color="#10151d"/>
+      <stop offset="1" stop-color="#0a0c0f"/>
+    </linearGradient>
+    <linearGradient id="heroStroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4ea3ff"/>
+      <stop offset="1" stop-color="#56d6a0"/>
+    </linearGradient>
+    <linearGradient id="snapFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#63e0a4"/>
+      <stop offset="1" stop-color="#37b878"/>
+    </linearGradient>
+    <radialGradient id="topLight" cx="0.5" cy="0" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.03"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#4ea3ff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#4ea3ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="neonBlue" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#4ea3ff" flood-opacity="0.65"/>
+    </filter>
+    <filter id="neonGreen" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#56d6a0" flood-opacity="0.7"/>
+    </filter>
+    <clipPath id="tileClip">
+      <rect x="8" y="8" width="496" height="496" rx="116"/>
+    </clipPath>
+  </defs>
+
+  <!-- плитка -->
+  <rect x="8" y="8" width="496" height="496" rx="116" fill="url(#tileBg)"/>
+  <g clip-path="url(#tileClip)">
+    <!-- свет сверху -->
+    <ellipse cx="256" cy="40" rx="240" ry="120" fill="url(#topLight)"/>
+    <!-- малая сетка 16px -->
+    <g stroke="#78a0dc" stroke-opacity="0.055" stroke-width="1">
+      <path d="M24 8V504M40 8V504M56 8V504M72 8V504M88 8V504M104 8V504M120 8V504M136 8V504M152 8V504M168 8V504M184 8V504M200 8V504M216 8V504M232 8V504M248 8V504M264 8V504M280 8V504M296 8V504M312 8V504M328 8V504M344 8V504M360 8V504M376 8V504M392 8V504M408 8V504M424 8V504M440 8V504M456 8V504M472 8V504M488 8V504M8 24H504M8 40H504M8 56H504M8 72H504M8 88H504M8 104H504M8 120H504M8 136H504M8 152H504M8 168H504M8 184H504M8 200H504M8 216H504M8 232H504M8 248H504M8 264H504M8 280H504M8 296H504M8 312H504M8 328H504M8 344H504M8 360H504M8 376H504M8 392H504M8 408H504M8 424H504M8 440H504M8 456H504M8 472H504M8 488H504"/>
+    </g>
+    <!-- большая сетка 64px -->
+    <g stroke="#78aaf0" stroke-opacity="0.14" stroke-width="2">
+      <path d="M72 8V504M136 8V504M200 8V504M264 8V504M328 8V504M392 8V504M456 8V504M8 72H504M8 136H504M8 200H504M8 264H504M8 328H504M8 392H504M8 456H504"/>
+    </g>
+    <!-- синее свечение под героем -->
+    <ellipse cx="256" cy="272" rx="150" ry="150" fill="url(#blueGlow)"/>
+  </g>
+
+  <!-- большой квадрат: мелкий ритм -->
+  <g filter="url(#softShadow)">
+    <rect x="128" y="140" width="256" height="256" rx="36"
+          fill="none" stroke="url(#heroStroke)" stroke-width="30" filter="url(#neonBlue)"/>
+  </g>
+
+  <!-- снап-квадрат на углу: встал на крупный ритм -->
+  <g filter="url(#softShadow)">
+    <rect x="330" y="338" width="106" height="106" rx="26"
+          fill="url(#snapFill)" filter="url(#neonGreen)"/>
+  </g>
+
+  <!-- окантовка плитки -->
+  <rect x="9" y="9" width="494" height="494" rx="115"
+        fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="2"/>
+</svg>

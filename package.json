@@ -24,9 +24,12 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "assets/icon.png",
+      "assets/icon.ico"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "dir",

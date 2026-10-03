@@ -23,6 +23,9 @@ function createWindow() {
     resizable: true,
     maximizable: true,
     backgroundColor: '#0a0c0f',
+    // иконка окна: в dev лежит рядом с проектом, в сборке — рядом с app.asar.
+    // Файл появляется конвертацией assets/icon.svg (см. README/иконка).
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
